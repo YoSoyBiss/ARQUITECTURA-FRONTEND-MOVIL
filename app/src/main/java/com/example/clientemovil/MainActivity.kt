@@ -1,47 +1,41 @@
 package com.example.clientemovil
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.clientemovil.ui.theme.ClientemovilTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.example.clientemovil.network.laravel.LaravelRetrofitClient
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
         setContent {
-            ClientemovilTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            Greeting("Android")
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = LaravelRetrofitClient.api.getAllProducts()
+                if (response.isSuccessful) {
+                    val productos = response.body()
+                    Log.d("API", "Productos: $productos")
+                } else {
+                    Log.e("API", "Error: ${response.code()}")
                 }
+            } catch (e: Exception) {
+                Log.e("API", "Excepción: ${e.message}")
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ClientemovilTheme {
-        Greeting("Android")
-    }
+fun Greeting(name: String) {
+    Text(text = "Hello $name!")
 }
