@@ -1,6 +1,6 @@
 package com.example.clientemovil.network.laravel
 
-import com.example.clientemovil.models.Product
+import com.example.clientemovil.models.Product // <- Importa el modelo Product del paquete 'models'
 import retrofit2.Response
 import retrofit2.http.*
 
