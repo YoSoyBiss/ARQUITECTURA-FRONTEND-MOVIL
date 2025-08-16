@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,11 +16,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.clientemovil.models.Product
 import com.example.clientemovil.models.SaleDetail
+import com.example.clientemovil.models.SaleDetailRequestItem
 import com.example.clientemovil.models.SaleRequest
 import com.example.clientemovil.models.UserWithRoleObject
 import com.example.clientemovil.network.node.NodeRetrofitClient
-import com.example.clientemovil.network.laravel.LaravelRetrofitClient // <-- NUEVA IMPORTACIÓN
+import com.example.clientemovil.network.laravel.LaravelRetrofitClient
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,9 +38,13 @@ fun SalesFormScreen(
     var selectedUser by remember { mutableStateOf<UserWithRoleObject?>(null) }
     var availableUsers by remember { mutableStateOf<List<UserWithRoleObject>>(emptyList()) }
     var availableProducts by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var saleDetails by remember { mutableStateOf<List<SaleDetail>>(emptyList()) }
+    var saleDetails by remember { mutableStateOf<List<SaleDetailRequestItem>>(emptyList()) }
 
     var isLoading by remember { mutableStateOf(false) }
+
+    // Estados para el diálogo de error
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     suspend fun loadUsers() {
         try {
@@ -57,7 +62,7 @@ fun SalesFormScreen(
     suspend fun loadProducts() {
         isLoading = true
         try {
-            val response = LaravelRetrofitClient.api.getAllProducts() // <-- CAMBIO AQUÍ
+            val response = LaravelRetrofitClient.api.getAllProducts()
             if (response.isSuccessful) {
                 availableProducts = response.body() ?: emptyList()
             } else {
@@ -81,13 +86,12 @@ fun SalesFormScreen(
                 }
             }
         } else {
-            saleDetails = saleDetails + SaleDetail(
+            saleDetails = saleDetails + SaleDetailRequestItem(
                 productId = product.id!!,
-                quantity = 1,
-                unitPrice = product.price
+                quantity = 1
             )
         }
-        Toast.makeText(context, "${product.title} añadido", Toast.LENGTH_SHORT).show()
+        // Eliminado el Toast "Producto añadido" aquí para evitar mensajes incorrectos
     }
 
     LaunchedEffect(Unit) {
@@ -97,13 +101,27 @@ fun SalesFormScreen(
         }
     }
 
+    // Diálogo de error
+    if (showErrorDialog && errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text(text = "Error en la Venta") },
+            text = { Text(text = errorMessage!!) },
+            confirmButton = {
+                Button(onClick = { showErrorDialog = false }) {
+                    Text("Aceptar")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(text = "Crear Venta") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -163,8 +181,8 @@ fun SalesFormScreen(
                         }
                     }
 
-                    val total = saleDetails.sumOf { it.quantity * it.unitPrice }
-                    Text("Total de la venta: $${String.format("%.2f", total)}", style = MaterialTheme.typography.titleLarge)
+                    val total = "0.00" // El total se calcula en el backend
+                    Text("Total de la venta: $${total}", style = MaterialTheme.typography.titleLarge)
 
                     Button(
                         onClick = {
@@ -177,12 +195,41 @@ fun SalesFormScreen(
                                     Toast.makeText(context, "Por favor, añada productos a la venta", Toast.LENGTH_SHORT).show()
                                     return@launch
                                 }
-                                val saleRequest = SaleRequest(
-                                    userId = selectedUser!!._id!!,
-                                    details = saleDetails
-                                )
-                                createSale(saleRequest, context)
-                                onBack()
+                                try {
+                                    val response = NodeRetrofitClient.api.createSale(
+                                        SaleRequest(
+                                            userId = selectedUser!!._id!!,
+                                            details = saleDetails
+                                        )
+                                    )
+                                    if (response.isSuccessful) {
+                                        Toast.makeText(context, "Venta creada con éxito", Toast.LENGTH_SHORT).show()
+                                        onBack()
+                                    } else {
+                                        val errorBody = response.errorBody()?.string()
+                                        if (errorBody != null) {
+                                            try {
+                                                val jsonError = JSONObject(errorBody)
+                                                val msg = jsonError.getString("error")
+                                                errorMessage = msg
+                                                showErrorDialog = true
+                                                Log.e("SalesFormScreen", "Error al crear venta: $msg")
+                                            } catch (e: Exception) {
+                                                errorMessage = "Error al crear venta: ${response.code()}"
+                                                showErrorDialog = true
+                                                Log.e("SalesFormScreen", "Error al crear venta: ${response.code()}, Cuerpo del error: $errorBody", e)
+                                            }
+                                        } else {
+                                            errorMessage = "Error al crear venta: ${response.code()}"
+                                            showErrorDialog = true
+                                            Log.e("SalesFormScreen", "Error al crear venta: ${response.code()}")
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    errorMessage = "Excepción: ${e.message}"
+                                    showErrorDialog = true
+                                    Log.e("SalesFormScreen", "Excepción al crear venta", e)
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -219,20 +266,5 @@ fun ProductItem(product: Product, onAdd: () -> Unit) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir producto")
             }
         }
-    }
-}
-
-private suspend fun createSale(saleRequest: SaleRequest, context: android.content.Context) {
-    try {
-        val response = NodeRetrofitClient.api.createSale(saleRequest)
-        if (response.isSuccessful) {
-            Toast.makeText(context, "Venta creada con éxito", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Error al crear venta: ${response.code()}", Toast.LENGTH_SHORT).show()
-            Log.e("SalesFormScreen", "Error al crear venta: ${response.errorBody()?.string()}")
-        }
-    } catch (e: Exception) {
-        Toast.makeText(context, "Excepción: ${e.message}", Toast.LENGTH_SHORT).show()
-        Log.e("SalesFormScreen", "Excepción al crear venta", e)
     }
 }
