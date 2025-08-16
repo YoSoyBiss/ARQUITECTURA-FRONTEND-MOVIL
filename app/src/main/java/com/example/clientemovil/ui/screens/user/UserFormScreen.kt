@@ -12,9 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.clientemovil.models.Role
-import com.example.clientemovil.models.UserWithRoleObject // <- Importación correcta
+import com.example.clientemovil.models.User
+import com.example.clientemovil.models.UserWithRoleObject
 import com.example.clientemovil.network.node.NodeRetrofitClient
 import kotlinx.coroutines.launch
 
@@ -35,6 +37,11 @@ fun UserFormScreen(
     var selectedRole by remember { mutableStateOf<Role?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
+    // Estados para el diálogo de cambio de contraseña
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+
     suspend fun loadRoles() {
         try {
             val response = NodeRetrofitClient.api.getAllRoles()
@@ -49,25 +56,64 @@ fun UserFormScreen(
     suspend fun loadUser(id: String) {
         isLoading = true
         try {
-            val response = NodeRetrofitClient.api.getUser(id)
+            val response = NodeRetrofitClient.api.getUserWithRoleString(id)
             if (response.isSuccessful) {
                 val user = response.body()
                 user?.let {
                     name = it.name
                     email = it.email
-                    selectedRole = it.role
+                    selectedRole = availableRoles.find { role -> role._id == it.role }
                 }
+                Log.d("UserFormScreen", "Usuario cargado: ${user?.name}")
             } else {
                 Toast.makeText(context, "Error al cargar usuario: ${response.code()}", Toast.LENGTH_SHORT).show()
+                Log.e("UserFormScreen", "Error al cargar usuario: ${response.errorBody()?.string()}")
             }
         } catch (e: Exception) {
             Toast.makeText(context, "Excepción: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("UserFormScreen", "Excepción al cargar usuario", e)
         } finally {
             isLoading = false
         }
     }
 
-    LaunchedEffect(Unit) {
+    suspend fun updatePassword(currentPass: String, newPass: String) {
+        if (currentPass.isEmpty() || newPass.isEmpty()) {
+            Toast.makeText(context, "Los campos no pueden estar vacíos", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (userId == null) {
+            Toast.makeText(context, "ID de usuario no disponible", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val requestBody = mapOf(
+            "currentPassword" to currentPass,
+            "newPassword" to newPass
+        )
+
+        try {
+            val response = NodeRetrofitClient.api.updatePassword(userId, requestBody)
+
+            if (response.isSuccessful) {
+                Toast.makeText(context, "Contraseña actualizada con éxito", Toast.LENGTH_SHORT).show()
+                showPasswordDialog = false
+            } else {
+                val errorMessage = if (response.code() == 401) {
+                    "Contraseña actual incorrecta."
+                } else {
+                    "Error al actualizar la contraseña: ${response.code()}"
+                }
+                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Excepción al actualizar contraseña: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("UserFormScreen", "Excepción al actualizar contraseña", e)
+        }
+    }
+
+    LaunchedEffect(userId) {
         scope.launch {
             loadRoles()
             if (isEditing && userId != null) {
@@ -115,13 +161,23 @@ fun UserFormScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                     )
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Contraseña") },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
+                    if (!isEditing) {
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Contraseña") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            visualTransformation = PasswordVisualTransformation()
+                        )
+                    } else {
+                        Button(
+                            onClick = { showPasswordDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Modificar Contraseña")
+                        }
+                    }
 
                     var expanded by remember { mutableStateOf(false) }
                     ExposedDropdownMenuBox(
@@ -157,7 +213,13 @@ fun UserFormScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                val user = UserWithRoleObject(_id = userId, name = name, email = email, password = password, role = selectedRole)
+                                val user = UserWithRoleObject(
+                                    _id = if (isEditing) userId else null,
+                                    name = name,
+                                    email = email,
+                                    password = if (isEditing) null else password,
+                                    role = selectedRole
+                                )
                                 if (isEditing) {
                                     updateUser(user, context)
                                 } else {
@@ -175,8 +237,60 @@ fun UserFormScreen(
             }
         }
     }
+
+    if (showPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { showPasswordDialog = false },
+            title = { Text("Modificar Contraseña") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedTextField(
+                        value = currentPassword,
+                        onValueChange = { currentPassword = it },
+                        label = { Text("Contraseña Actual") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("Nueva Contraseña") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            updatePassword(currentPassword, newPassword)
+                            currentPassword = ""
+                            newPassword = ""
+                        }
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPasswordDialog = false
+                        currentPassword = ""
+                        newPassword = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
+// Funciones auxiliares para crear y actualizar usuario (se mantienen igual)
 private suspend fun createUser(user: UserWithRoleObject, context: android.content.Context) {
     try {
         val response = NodeRetrofitClient.api.createUser(user)

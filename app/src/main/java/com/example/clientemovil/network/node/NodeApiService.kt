@@ -1,18 +1,16 @@
 package com.example.clientemovil.network.node
 
-import com.example.clientemovil.models.SaleRequest
-import com.example.clientemovil.models.SaleResponse
-import com.example.clientemovil.models.UserWithRoleObject
-import com.example.clientemovil.models.Role
+import com.example.clientemovil.models.*
 import retrofit2.Response
 import retrofit2.http.*
-import retrofit2.http.Body
 
 interface NodeApiService {
-
-    // Rutas para Usuarios
     @GET("api/users")
     suspend fun getAllUsers(): Response<List<UserWithRoleObject>>
+
+    // Esta es la nueva función para obtener un solo usuario
+    @GET("api/users/{id}")
+    suspend fun getUserWithRoleString(@Path("id") id: String): Response<User>
 
     @GET("api/users/{id}")
     suspend fun getUser(@Path("id") id: String): Response<UserWithRoleObject>
@@ -24,13 +22,12 @@ interface NodeApiService {
     suspend fun updateUser(@Path("id") id: String, @Body user: UserWithRoleObject): Response<UserWithRoleObject>
 
     @DELETE("api/users/{id}")
-    suspend fun deleteUser(@Path("id") id: String): Response<Void>
+    suspend fun deleteUser(@Path("id") id: String): Response<Unit>
 
-    // Rutas para Roles
     @GET("api/roles")
     suspend fun getAllRoles(): Response<List<Role>>
 
-    @GET("api/roles/{id}") // <- El método que faltaba para cargar un solo rol
+    @GET("api/roles/{id}")
     suspend fun getRole(@Path("id") id: String): Response<Role>
 
     @POST("api/roles")
@@ -40,9 +37,8 @@ interface NodeApiService {
     suspend fun updateRole(@Path("id") id: String, @Body role: Role): Response<Role>
 
     @DELETE("api/roles/{id}")
-    suspend fun deleteRole(@Path("id") id: String): Response<Void>
+    suspend fun deleteRole(@Path("id") id: String): Response<Unit>
 
-    // Rutas para Ventas
     @GET("api/sales")
     suspend fun getAllSales(): Response<List<SaleResponse>>
 
@@ -53,8 +49,14 @@ interface NodeApiService {
     suspend fun createSale(@Body sale: SaleRequest): Response<SaleResponse>
 
     @PUT("api/sales/{id}")
-    suspend fun updateSale(@Path("id") id: String, @Body sale: Map<String, Any>): Response<Void>
+    suspend fun updateSale(@Path("id") id: String, @Body sale: SaleRequest): Response<SaleResponse>
 
     @DELETE("api/sales/{id}")
-    suspend fun deleteSale(@Path("id") id: String): Response<Void>
+    suspend fun deleteSale(@Path("id") id: String): Response<Unit>
+
+    @PUT("api/users/{id}/password")
+    suspend fun updatePassword(
+        @Path("id") id: String,
+        @Body requestBody: Map<String, String>
+    ): Response<Unit>
 }
