@@ -47,6 +47,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.material:material-icons-extended:1.6.8")
     // Retrofit
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
