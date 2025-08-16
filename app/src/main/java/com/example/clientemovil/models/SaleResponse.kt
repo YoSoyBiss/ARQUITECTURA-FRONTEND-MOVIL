@@ -62,4 +62,29 @@ data class SaleRequest(
     val userId: String, // ID del usuario que realiza la compra
     val details: List<SaleDetailRequestItem>
 )
+data class SaleCreatedDetail(
+    val productId: Int,
+    val quantity: Int
+)
+
+/**
+ * Representa la venta creada, con un userId como String.
+ * Este modelo coincide con la respuesta del microservicio de Node.js.
+ */
+data class SaleCreatedResponse(
+    @SerializedName("_id")
+    val id: String?,
+    val total: Double,
+    val userId: String?, // Aquí es donde se espera un String, no un objeto
+    val details: List<SaleCreatedDetail>?
+)
+
+/**
+ * Modelo para la estructura JSON de la respuesta al crear una venta.
+ * { "message": "...", "sale": { ... } }
+ */
+data class CreateSaleSuccessResponse(
+    val message: String,
+    val sale: SaleCreatedResponse // La venta creada con el modelo simplificado
+)
 
