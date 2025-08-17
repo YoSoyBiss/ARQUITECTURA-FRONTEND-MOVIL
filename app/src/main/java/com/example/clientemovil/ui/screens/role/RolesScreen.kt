@@ -20,8 +20,7 @@ import androidx.navigation.NavController
 import com.example.clientemovil.models.Role
 import com.example.clientemovil.network.node.NodeRetrofitClient
 import kotlinx.coroutines.launch
-import com.example.clientemovil.Screen
-
+import com.example.clientemovil.ui.screens.more.Screen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RolesScreen(navController: NavController) {

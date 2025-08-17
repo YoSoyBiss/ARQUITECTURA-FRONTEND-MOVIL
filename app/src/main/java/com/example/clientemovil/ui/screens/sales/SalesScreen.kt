@@ -35,7 +35,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SalesScreen(navController: NavController) {
+fun SalesScreen(navController: NavController, canEdit: Boolean) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var sales by remember { mutableStateOf<List<SaleResponse>>(emptyList()) }
@@ -76,10 +76,13 @@ fun SalesScreen(navController: NavController) {
             TopAppBar(title = { Text(text = "Gestión de Ventas") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                navController.navigate(Screen.SaleForm.route.replace("{saleId}", "create"))
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir Venta")
+            // Mostrar FAB solo si el usuario tiene permisos de edición
+            if (canEdit) {
+                FloatingActionButton(onClick = {
+                    navController.navigate("sale_form/new")
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Añadir Venta")
+                }
             }
         }
     ) { paddingValues ->

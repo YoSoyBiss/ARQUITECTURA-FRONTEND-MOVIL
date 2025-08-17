@@ -16,7 +16,7 @@ import androidx.navigation.NavController
 import com.example.clientemovil.ui.components.ListItem
 import com.example.clientemovil.network.node.NodeRetrofitClient
 import kotlinx.coroutines.launch
-import com.example.clientemovil.Screen
+import com.example.clientemovil.ui.screens.more.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

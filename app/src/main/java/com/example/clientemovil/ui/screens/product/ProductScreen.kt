@@ -27,7 +27,7 @@ import java.io.IOException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductsScreen(navController: NavController) {
+fun ProductsScreen(navController: NavController, canEdit: Boolean) {
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -91,11 +91,14 @@ fun ProductsScreen(navController: NavController) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                // Navegar al formulario para crear un nuevo producto
-                navController.navigate("products_form/new")
-            }) {
-                Icon(Icons.Filled.Add, contentDescription = "Agregar Producto")
+            // Mostrar FAB solo si el usuario tiene permisos de edición
+            if (canEdit) {
+                FloatingActionButton(onClick = {
+                    // Navegar al formulario para crear un nuevo producto
+                    navController.navigate("products_form/new")
+                }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Agregar Producto")
+                }
             }
         }
     ) { paddingValues ->
@@ -114,74 +117,72 @@ fun ProductsScreen(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(products, key = { it.id ?: 0 }) { product ->
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { dismissValue ->
-                                when (dismissValue) {
-                                    SwipeToDismissBoxValue.EndToStart -> {
-                                        productToDelete = product
-                                        false // No se descarta, se muestra el diálogo
-                                    }
-                                    SwipeToDismissBoxValue.StartToEnd -> {
-                                        product.id?.let {
-                                            // Navegar al formulario para editar
-                                            navController.navigate("products_form/${it}")
+                        if (canEdit) {
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { dismissValue ->
+                                    when (dismissValue) {
+                                        SwipeToDismissBoxValue.EndToStart -> {
+                                            productToDelete = product
+                                            false // No se descarta, se muestra el diálogo
                                         }
-                                        false
+                                        SwipeToDismissBoxValue.StartToEnd -> {
+                                            product.id?.let {
+                                                // Navegar al formulario para editar
+                                                navController.navigate("products_form/${it}")
+                                            }
+                                            false
+                                        }
+                                        else -> false
                                     }
-                                    else -> false
                                 }
-                            }
-                        )
+                            )
 
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            backgroundContent = {
-                                val color = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.StartToEnd -> Color.Blue
-                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
-                                    else -> Color.Transparent
-                                }
-                                val icon = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Edit
-                                    SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
-                                    else -> null
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(color)
-                                        .padding(16.dp),
-                                    contentAlignment = when (dismissState.targetValue) {
-                                        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                                        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                                        else -> Alignment.Center
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                backgroundContent = {
+                                    val color = when (dismissState.targetValue) {
+                                        SwipeToDismissBoxValue.StartToEnd -> Color.Blue
+                                        SwipeToDismissBoxValue.EndToStart -> Color.Red
+                                        else -> Color.Transparent
                                     }
+                                    val icon = when (dismissState.targetValue) {
+                                        SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Edit
+                                        SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
+                                        else -> null
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(color)
+                                            .padding(16.dp),
+                                        contentAlignment = when (dismissState.targetValue) {
+                                            SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                                            SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                                            else -> Alignment.Center
+                                        }
+                                    ) {
+                                        if (icon != null) {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = null,
+                                                tint = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            ) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    if (icon != null) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            tint = Color.White
-                                        )
-                                    }
+                                    ProductCardContent(product)
                                 }
                             }
-                        ) {
+                        } else {
+                            // Si no se puede editar, solo mostrar la tarjeta sin swipe
                             Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                ) {
-                                    Text(
-                                        text = product.title,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                ProductCardContent(product)
                             }
                         }
                     }
@@ -214,5 +215,58 @@ fun ProductsScreen(navController: NavController) {
                 }
             }
         )
+    }
+}
+
+/**
+ * Composable que define el contenido de una tarjeta de producto.
+ * Este Composable se extrajo para reducir la duplicación de código.
+ */
+@Composable
+fun ProductCardContent(product: Product) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        // Título del producto
+        Text(
+            text = product.title,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        // Precio y stock
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Precio: $${product.price}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+            Text(
+                text = "Stock: ${product.stock}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
+        // Se corrige para acceder a las listas de autores y géneros
+        // y mostrar los nombres correctamente.
+        if (!product.authors.isNullOrEmpty()) {
+            Text(
+                text = "Autor(es): ${product.authors.joinToString(", ") { it.name }}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
+        if (!product.genres.isNullOrEmpty()) {
+            Text(
+                text = "Género(s): ${product.genres.joinToString(", ") { it.name }}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
     }
 }

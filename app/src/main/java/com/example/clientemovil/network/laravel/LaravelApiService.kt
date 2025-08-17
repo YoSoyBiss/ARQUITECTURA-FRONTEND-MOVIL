@@ -14,7 +14,6 @@ interface LaravelApiService {
     @GET("api/products/{id}")
     suspend fun getProduct(@Path("id") id: Int): Response<Product>
 
-    // MODIFICADO: Usa el nuevo modelo ProductRequest para la CREACIÓN
     @POST("api/products")
     suspend fun createProduct(@Body productRequest: ProductRequest): Response<Product>
 
@@ -77,4 +76,5 @@ interface LaravelApiService {
 
     @DELETE("api/publishers/{id}")
     suspend fun deletePublisher(@Path("id") id: Int): Response<Unit>
+
 }

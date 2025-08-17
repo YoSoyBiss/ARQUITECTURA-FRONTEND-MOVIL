@@ -60,4 +60,13 @@ interface NodeApiService {
         @Path("id") id: String,
         @Body requestBody: Map<String, String>
     ): Response<Unit>
+
+    // --- Rutas para el Login ----
+    @POST("api/users/login")
+    suspend fun loginUser(@Body request: UserLoginRequest): Response<LoginResponse>
+
+    // --- Ruta para el registro de usuarios ---
+    @POST("api/users/register")
+    suspend fun registerUser(@Body request: UserRegisterRequest): Response<LoginResponse>
+
 }

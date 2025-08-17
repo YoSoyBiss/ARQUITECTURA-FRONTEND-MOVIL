@@ -126,3 +126,27 @@ data class ProductUpdateRequest(
     val genreIds: Set<Int>,
     val images: List<ProductImage>
 )
+
+
+data class LoginResponse(
+    val message: String,
+    val user: User
+)
+
+data class UserLoginRequest(
+    val email: String,
+    val password: String
+)
+
+/**
+ * Modelo para la solicitud de registro de usuario.
+ * Coincide con el payload JSON que tu API de Laravel espera.
+ */
+data class UserRegisterRequest(
+    val name: String,
+    val email: String,
+    val password: String,
+    // El rol se envía como el ID del rol al registrar
+    @SerializedName("role")
+    val roleId: String
+)
