@@ -1,9 +1,10 @@
 package com.example.clientemovil
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -15,19 +16,24 @@ sealed class CatalogScreen(val route: String, val label: String, val icon: Image
     object Authors : CatalogScreen("authors_screen", "Autores", Icons.Default.Person)
     object Genres : CatalogScreen("genres_screen", "Géneros", Icons.Default.List)
     object Publishers : CatalogScreen("publishers_screen", "Editoriales", Icons.Default.Business)
+    // Nueva pantalla para Productos
+    object Products : CatalogScreen("products_screen", "Productos", Icons.Default.Book)
 
     // Pantallas de formulario para crear/editar elementos de los catálogos
     object AuthorsForm : CatalogScreen("authors_form/{authorId}", "Autor Form", Icons.Default.Person)
     object GenresForm : CatalogScreen("genres_form/{genreId}", "Género Form", Icons.Default.List)
     object PublishersForm : CatalogScreen("publishers_form/{publisherId}", "Editorial Form", Icons.Default.Business)
+    // Nuevo formulario para Productos
+    object ProductsForm : CatalogScreen("products_form/{productId}", "Producto Form", Icons.Default.Book)
 }
 
 /**
  * Lista de los elementos de navegación para la barra inferior.
- * Solo incluye las pantallas de la lista (Autores, Géneros, Editoriales).
+ * Solo incluye las pantallas de la lista (Autores, Géneros, Editoriales y Productos).
  */
 val catalogItems = listOf(
     CatalogScreen.Authors,
     CatalogScreen.Genres,
-    CatalogScreen.Publishers
+    CatalogScreen.Publishers,
+    CatalogScreen.Products // Nuevo: ¡Esto es lo que faltaba!
 )

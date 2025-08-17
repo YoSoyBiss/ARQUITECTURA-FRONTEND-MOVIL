@@ -1,23 +1,22 @@
 package com.example.clientemovil.network.laravel
 
-import com.example.clientemovil.models.Product
-import com.example.clientemovil.models.Author
-import com.example.clientemovil.models.Genre
-import com.example.clientemovil.models.Publisher
-import com.example.clientemovil.models.CatalogRequest
+import com.example.clientemovil.models.*
+
 import retrofit2.Response
 import retrofit2.http.*
 
 interface LaravelApiService {
 
+    // --- Rutas para Productos ---
     @GET("api/products")
     suspend fun getAllProducts(): Response<List<Product>>
 
     @GET("api/products/{id}")
     suspend fun getProduct(@Path("id") id: Int): Response<Product>
 
+    // MODIFICADO: Usa el nuevo modelo ProductRequest para la CREACIÓN
     @POST("api/products")
-    suspend fun createProduct(@Body product: Product): Response<Product>
+    suspend fun createProduct(@Body productRequest: ProductRequest): Response<Product>
 
     @PUT("api/products/{id}")
     suspend fun updateProduct(@Path("id") id: Int, @Body product: Product): Response<Product>
@@ -25,7 +24,11 @@ interface LaravelApiService {
     @DELETE("api/products/{id}")
     suspend fun deleteProduct(@Path("id") id: Int): Response<Void>
 
-    // --- Rutas para Autores (CORREGIDAS) ---
+    @PATCH("api/products/{id}")
+    suspend fun updateProduct(@Path("id") id: Int, @Body product: ProductUpdateRequest): Response<Product>
+
+
+    // --- Rutas para Autores ---
     @GET("api/authors")
     suspend fun getAllAuthors(): Response<List<Author>>
 
@@ -42,7 +45,7 @@ interface LaravelApiService {
     suspend fun deleteAuthor(@Path("id") id: Int): Response<Unit>
 
 
-    // --- Rutas para Géneros (CORREGIDAS) ---
+    // --- Rutas para Géneros ---
     @GET("api/genres")
     suspend fun getAllGenres(): Response<List<Genre>>
 
@@ -59,7 +62,7 @@ interface LaravelApiService {
     suspend fun deleteGenre(@Path("id") id: Int): Response<Unit>
 
 
-    // --- Rutas para Editoriales (CORREGIDAS) ---
+    // --- Rutas para Editoriales ---
     @GET("api/publishers")
     suspend fun getAllPublishers(): Response<List<Publisher>>
 

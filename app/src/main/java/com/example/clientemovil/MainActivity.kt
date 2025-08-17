@@ -5,9 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,9 +20,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.clientemovil.ui.screens.author.AuthorsFormScreen
 import com.example.clientemovil.ui.screens.catalogos.AuthorsScreen
 import com.example.clientemovil.ui.screens.catalogos.GenresScreen
+import com.example.clientemovil.ui.screens.catalogos.ProductsFormScreen
+import com.example.clientemovil.ui.screens.catalogos.ProductsScreen
 import com.example.clientemovil.ui.screens.catalogos.PublishersScreen
+
 import com.example.clientemovil.ui.screens.genre.GenresFormScreen
 import com.example.clientemovil.ui.screens.publisher.PublishersFormScreen
+
 import com.example.clientemovil.ui.screens.role.RoleFormScreen
 import com.example.clientemovil.ui.screens.role.RolesScreen
 import com.example.clientemovil.ui.screens.sales.SalesFormScreen
@@ -43,7 +45,9 @@ sealed class Screen(val route: String, val label: String? = null, val icon: Imag
     object Sales : Screen("sales", "Ventas", Icons.Default.ShoppingCart)
     object Authors : Screen("authors", "Autores", Icons.Default.Person)
     object Genres : Screen("genres", "Géneros", Icons.Default.List)
-    object Publishers : Screen("publishers", "Editoriales", Icons.Default.List)
+    object Publishers : Screen("publishers", "Editoriales", Icons.Default.Business)
+    // Pantalla de productos
+    object Products : Screen("products", "Productos", Icons.Default.Book)
 
     // Pantallas de formulario sin ícono en la barra de navegación
     object UserForm : Screen("user_form/{userId}", "UserForm")
@@ -52,6 +56,8 @@ sealed class Screen(val route: String, val label: String? = null, val icon: Imag
     object AuthorsForm : Screen("authors_form/{authorId}", "AutorForm")
     object GenresForm : Screen("genres_form/{genreId}", "GéneroForm")
     object PublishersForm : Screen("publishers_form/{publisherId}", "EditorialForm")
+    // Formulario de productos
+    object ProductsForm : Screen("products_form/{productId}", "ProductoForm")
 }
 
 // Lista de elementos para la barra de navegación inferior
@@ -59,6 +65,7 @@ val bottomNavItems = listOf(
     Screen.Authors,
     Screen.Genres,
     Screen.Publishers,
+    Screen.Products, // Nuevo: ¡añadido Productos aquí!
     Screen.Users,
     Screen.Roles,
     Screen.Sales
@@ -116,6 +123,8 @@ fun MainScreen() {
             composable(Screen.Authors.route) { AuthorsScreen(navController) }
             composable(Screen.Genres.route) { GenresScreen(navController) }
             composable(Screen.Publishers.route) { PublishersScreen(navController) }
+            // Ruta para la pantalla de productos
+            composable(Screen.Products.route) { ProductsScreen(navController) }
 
             // Rutas de usuarios, roles y ventas
             composable(Screen.Users.route) { UsersScreen(navController) }
@@ -134,6 +143,11 @@ fun MainScreen() {
             composable(Screen.PublishersForm.route) { backStackEntry ->
                 val publisherId = backStackEntry.arguments?.getString("publisherId")?.toIntOrNull()
                 PublishersFormScreen(publisherId = publisherId, onBack = { navController.popBackStack() })
+            }
+            // Ruta para el formulario de productos
+            composable(Screen.ProductsForm.route) { backStackEntry ->
+                val productId = backStackEntry.arguments?.getString("productId")?.toIntOrNull()
+                ProductsFormScreen(productId = productId, onBack = { navController.popBackStack() })
             }
             composable(Screen.UserForm.route) { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId")
