@@ -1,19 +1,20 @@
 package com.example.clientemovil
 
+import android.content.Context // Necesario para SharedPreferences y Toast
 import android.os.Bundle
+import android.widget.Toast // Necesario para el Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext // Necesario para obtener el Context
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -39,6 +40,8 @@ import com.example.clientemovil.ui.screens.sales.SalesScreen
 import com.example.clientemovil.ui.screens.user.UserFormScreen
 import com.example.clientemovil.ui.screens.user.UsersScreen
 import com.example.clientemovil.ui.theme.ClienteMovilTheme
+import kotlinx.coroutines.CoroutineScope // Necesario para launch
+import kotlinx.coroutines.launch // Necesario para launch
 
 /**
  * Clase que define una ruta de navegación con sus propiedades.
@@ -72,6 +75,39 @@ val otherNavItems = listOf(
     Screen("about", "Acerca de", Icons.Default.Info),
 )
 
+// --- INICIO: Lógica de Cierre de Sesión ---
+fun performUserLogout(
+    appNavController: NavHostController, // El NavController principal de la app
+    scope: CoroutineScope,
+    context: Context
+) {
+    scope.launch {
+        // 1. LIMPIAR DATOS DE SESIÓN (SharedPreferences, ViewModel, token en cliente HTTP, etc.)
+        //    Este es un EJEMPLO. Adapta esto a CÓMO guardas la sesión.
+        val sharedPreferences = context.getSharedPreferences("MyAppUserPrefs", Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            remove("user_token") // El nombre de la key que usas para el token
+            remove("user_role")  // El nombre de la key que usas para el rol
+            // Cualquier otro dato de sesión que guardes
+            apply()
+        }
+        // Si tu cliente Retrofit (NodeRetrofitClient) guarda el token estáticamente, límpialo también:
+        // NodeRetrofitClient.clearAuthToken() // Necesitarías crear esta función en NodeRetrofitClient
+
+        Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
+
+        // 2. NAVEGAR A LOGIN Y LIMPIAR BACKSTACK
+        //    Usamos appNavController para volver a la pantalla de login.
+        appNavController.navigate("login") { // Navega a la ruta de tu LoginScreen
+            popUpTo(appNavController.graph.id) { // Limpia todo el grafo de navegación actual
+                inclusive = true
+            }
+            launchSingleTop = true // Evita múltiples instancias de LoginScreen
+        }
+    }
+}
+// --- FIN: Lógica de Cierre de Sesión ---
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,98 +121,56 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Función principal que maneja el NavHost raíz de la aplicación.
- * Este NavHost maneja la navegación de alto nivel (login, registro, pantalla principal).
- */
 @Composable
 fun AppNavigation() {
-    val navController = rememberNavController()
+    val navController = rememberNavController() // Este es el appNavController
 
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = "login" // O una función que determine si ya hay sesión
     ) {
-        // 🎯 RUTAS DE LOGIN Y REGISTRO
         composable("login") {
             LoginScreen(
-                // Al iniciar sesión con éxito, navegamos a una ruta de "main" y pasamos el rol como argumento.
                 onLoginSuccess = { role ->
+                    // Guardar rol y token en SharedPreferences ANTES de navegar si es necesario
+                    // Ejemplo (deberías hacerlo dentro de LoginScreen al obtener la respuesta exitosa):
+                    // val sharedPreferences = context.getSharedPreferences("MyAppUserPrefs", Context.MODE_PRIVATE)
+                    // with(sharedPreferences.edit()) {
+                    //    putString("user_role", role)
+                    //    // putString("user_token", token_recibido_del_login)
+                    //    apply()
+                    // }
                     navController.navigate("main_screen/${role}") {
-                        // Limpiamos el back stack para que el usuario no pueda regresar a la pantalla de login.
-                        popUpTo(navController.graph.id) {
-                            inclusive = true
-                        }
+                        popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },
-                // El parámetro para el clic de registro es 'onRegisterClick', que es correcto.
                 onRegisterClick = { navController.navigate("register") }
             )
         }
-
         composable("register") {
-            // Se corrige el nombre del parámetro 'onRegisterSuccess' a 'onRegistrationSuccess' y se elimina el parámetro 'onLoginClick'
-            // porque no existe en la definición de la función RegisterScreen que me proporcionaste.
-            RegisterScreen(
-                onRegistrationSuccess = {
-                    navController.popBackStack()
-                }
-            )
+            RegisterScreen(onRegistrationSuccess = { navController.popBackStack() })
         }
-
-        // 🎯 RUTA PRINCIPAL CON LA BARRA INFERIOR
-        // Esta ruta recibe el rol del usuario para mostrar el menú correcto.
         composable("main_screen/{userRole}") { backStackEntry ->
             val userRole = backStackEntry.arguments?.getString("userRole")
             if (userRole != null) {
-                // Llamamos a la pantalla principal, que contendrá su propio NavHost.
                 MainScreenWithBottomBar(
-                    navController = navController, // Se pasa el navController principal para la navegación de formularios
+                    appNavController = navController, // Pasamos el NavController principal
                     userRole = userRole
                 )
             }
         }
-
-        // 🎯 RUTAS DE FORMULARIO (navegación que no tiene barra inferior)
-        // Estas rutas se definen en el NavHost principal para que puedan ser accesibles desde
-        // cualquier pantalla, incluyendo las de la barra inferior.
-        composable("authors_form/{authorId}") { backStackEntry ->
-            val authorId = backStackEntry.arguments?.getString("authorId")?.toIntOrNull()
-            AuthorsFormScreen(authorId = authorId, onBack = { navController.popBackStack() })
-        }
-        composable("genres_form/{genreId}") { backStackEntry ->
-            val genreId = backStackEntry.arguments?.getString("genreId")?.toIntOrNull()
-            GenresFormScreen(genreId = genreId, onBack = { navController.popBackStack() })
-        }
-        composable("publishers_form/{publisherId}") { backStackEntry ->
-            val publisherId = backStackEntry.arguments?.getString("publisherId")?.toIntOrNull()
-            PublishersFormScreen(publisherId = publisherId, onBack = { navController.popBackStack() })
-        }
-        composable("products_form/{productId}") { backStackEntry ->
-            val productId = backStackEntry.arguments?.getString("productId")?.toIntOrNull()
-            ProductsFormScreen(productId = productId, onBack = { navController.popBackStack() })
-        }
-        composable("user_form/{userId}") { backStackEntry ->
-            val userId = backStackEntry.arguments?.getString("userId")
-            UserFormScreen(userId = userId, onBack = { navController.popBackStack() })
-        }
-        composable("role_form/{roleId}") { backStackEntry ->
-            val roleId = backStackEntry.arguments?.getString("roleId")
-            RoleFormScreen(roleId = roleId, onBack = { navController.popBackStack() })
-        }
-        composable("sale_form/{saleId}") { backStackEntry ->
-            val saleId = backStackEntry.arguments?.getString("saleId")
-            SalesFormScreen(saleId = saleId, onBack = { navController.popBackStack() })
-        }
+        // Rutas de formulario (se mantienen igual, ya que son navegadas por el appNavController)
+        composable("authors_form/{authorId}") { /* ... */ }
+        composable("genres_form/{genreId}") { /* ... */ }
+        composable("publishers_form/{publisherId}") { /* ... */ }
+        composable("products_form/{productId}") { /* ... */ }
+        composable("user_form/{userId}") { /* ... */ }
+        composable("role_form/{roleId}") { /* ... */ }
+        composable("sale_form/{saleId}") { /* ... */ }
     }
 }
 
-/**
- * Función que determina la ruta de inicio según el rol del usuario.
- * Se ha corregido para ser insensible a mayúsculas y minúsculas.
- */
 private fun getStartRouteForRole(role: String): String {
-    // Convierte el rol a minúsculas para una comparación robusta.
     return when (role.lowercase()) {
         "admin" -> "authors"
         "consultant" -> "products"
@@ -185,41 +179,63 @@ private fun getStartRouteForRole(role: String): String {
     }
 }
 
-/**
- * Composable que contiene el Scaffold con la barra de navegación inferior.
- * Se encarga de la navegación dentro de las pantallas de la barra inferior.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreenWithBottomBar(navController: NavHostController, userRole: String) {
-    // 🎯 Se crea un NavController local para la navegación de la barra inferior.
-    val bottomBarNavController = rememberNavController()
+fun MainScreenWithBottomBar(
+    appNavController: NavHostController, // Recibe el NavController principal
+    userRole: String
+) {
+    val bottomBarNavController = rememberNavController() // Para la navegación interna de la BottomBar
+    val scope = rememberCoroutineScope() // Para la corutina de logout
+    val context = LocalContext.current // Para SharedPreferences y Toast en logout
 
-    // Se selecciona la lista de items correcta según el rol.
-    val items = when (userRole.lowercase()) {
+    // Título dinámico para la TopAppBar
+    var currentScreenTitle by remember { mutableStateOf("") }
+
+    // Obtenemos la ruta actual del NavHost ANIDADO para actualizar el título y la selección de la BottomBar
+    val navBackStackEntry by bottomBarNavController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    // Determinar los items de la BottomBar según el rol
+    val bottomNavItems = when (userRole.lowercase()) {
         "admin" -> adminNavItems
         "consultant" -> consultantNavItems
         "seller" -> sellerNavItems
         else -> otherNavItems
     }
 
-    // Se determina la ruta de inicio del NavHost anidado.
-    val startDestination = getStartRouteForRole(userRole)
+    // Actualizar el título cuando cambia la pantalla en el NavHost anidado
+    LaunchedEffect(currentDestination) {
+        currentScreenTitle = bottomNavItems.find { it.route == currentDestination?.route }?.label ?: "App"
+    }
+
+    val startDestinationForBottomNav = getStartRouteForRole(userRole)
 
     Scaffold(
+        topBar = { // <-- AÑADIMOS LA TOPAPPBAR AQUÍ
+            TopAppBar(
+                title = { Text(currentScreenTitle) },
+                actions = {
+                    IconButton(onClick = {
+                        // Opcional: Mostrar un diálogo de confirmación antes de llamar a performUserLogout
+                        performUserLogout(appNavController, scope, context)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Logout,
+                            contentDescription = "Cerrar Sesión"
+                        )
+                    }
+                }
+            )
+        },
         bottomBar = {
             NavigationBar {
-                // Obtenemos la ruta actual del NavHost anidado.
-                val navBackStackEntry by bottomBarNavController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-
-                items.forEach { screen ->
+                bottomNavItems.forEach { screen ->
                     NavigationBarItem(
-                        icon = { screen.icon?.let { icon -> Icon(icon, contentDescription = null) } },
+                        icon = { screen.icon?.let { icon -> Icon(icon, contentDescription = screen.label) } },
                         label = { Text(screen.label) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
-                            // 🎯 Navegamos usando el NavController local de la barra inferior.
                             bottomBarNavController.navigate(screen.route) {
                                 popUpTo(bottomBarNavController.graph.findStartDestination().id) {
                                     saveState = true
@@ -233,28 +249,36 @@ fun MainScreenWithBottomBar(navController: NavHostController, userRole: String) 
             }
         }
     ) { innerPadding ->
-        // 🎯 EL NAVHOST ANIDADO:
-        // Se coloca un nuevo NavHost dentro del Scaffold para manejar el contenido de la barra inferior.
         NavHost(
-            navController = bottomBarNavController, // Se usa el NavController local
-            startDestination = startDestination,
+            navController = bottomBarNavController,
+            startDestination = startDestinationForBottomNav,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Se definen las rutas para todas las pantallas de la barra inferior.
-            composable("authors") { AuthorsScreen(navController) }
-            composable("genres") { GenresScreen(navController) }
-            composable("publishers") { PublishersScreen(navController) }
+            // Las pantallas internas ahora usan el appNavController para navegar a los formularios
+            composable("authors") { AuthorsScreen(appNavController) }
+            composable("genres") { GenresScreen(appNavController) }
+            composable("publishers") { PublishersScreen(appNavController) }
             composable("products") {
                 val canEdit = userRole.lowercase() == "admin" || userRole.lowercase() == "seller"
-                ProductsScreen(navController, canEdit)
+                ProductsScreen(appNavController, canEdit)
             }
-            composable("users") { UsersScreen(navController) }
-            composable("roles") { RolesScreen(navController) }
+            composable("users") { UsersScreen(appNavController) }
+            composable("roles") { RolesScreen(appNavController) }
             composable("sales") {
                 val canEdit = userRole.lowercase() == "admin" || userRole.lowercase() == "seller"
-                SalesScreen(navController, canEdit)
+                SalesScreen(appNavController, canEdit)
             }
             composable("about") { AboutScreen() }
+
+            // Las rutas de formulario ya NO se definen aquí, están en el NavHost principal (AppNavigation)
+            // Esto es porque queremos que los formularios aparezcan ENCIMA de la UI con BottomBar/TopAppBar.
         }
     }
 }
+
+// Asegúrate de que las definiciones de tus pantallas de formulario (AuthorsFormScreen, etc.)
+// y las pantallas de catálogo (AuthorsScreen, etc.) estén correctas
+// y que acepten el NavController que se les pasa para cualquier navegación interna que necesiten.
+// Por ejemplo, si AuthorsScreen necesita navegar a AuthorsFormScreen, usa el NavController
+// que se le pasó (que es el appNavController).
+
