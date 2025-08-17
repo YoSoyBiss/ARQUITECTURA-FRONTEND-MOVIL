@@ -23,9 +23,9 @@ sealed class Screen(val route: String) {
     object PublisherForm : Screen("publisher_form_screen/{publisherId}")
     object Roles : Screen("roles_screen")
     // Aquí está la ruta que faltaba
-    object RoleForm : Screen("role_form_screen/{roleId}")
+    object RoleForm : Screen("role_form/{roleId}")
     object Users : Screen("users_screen")
-    object UserForm : Screen("user_form_screen/{userId}")
+    object UserForm : Screen("user_form/{userId}")
     object Sales : Screen("sales_screen/{canEdit}") {
         fun createRoute(canEdit: Boolean): String {
             return "sales_screen/$canEdit"
