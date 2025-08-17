@@ -24,6 +24,10 @@ import com.example.clientemovil.network.laravel.LaravelRetrofitClient
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
