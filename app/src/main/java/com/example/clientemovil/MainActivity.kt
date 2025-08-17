@@ -109,16 +109,18 @@ fun AppNavigation() {
                         }
                     }
                 },
+                // El parámetro para el clic de registro es 'onRegisterClick', que es correcto.
                 onRegisterClick = { navController.navigate("register") }
             )
         }
 
         composable("register") {
+            // Se corrige el nombre del parámetro 'onRegisterSuccess' a 'onRegistrationSuccess' y se elimina el parámetro 'onLoginClick'
+            // porque no existe en la definición de la función RegisterScreen que me proporcionaste.
             RegisterScreen(
-                onRegisterSuccess = {
+                onRegistrationSuccess = {
                     navController.popBackStack()
-                },
-                onLoginClick = { navController.popBackStack() }
+                }
             )
         }
 

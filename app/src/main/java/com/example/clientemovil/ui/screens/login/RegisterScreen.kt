@@ -9,16 +9,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+// Importaciones de los modelos de datos. Asegúrate de que las rutas sean correctas.
+import com.example.clientemovil.models.Role
 import com.example.clientemovil.models.UserRegisterRequest
-import com.example.clientemovil.network.laravel.LaravelRetrofitClient
 import com.example.clientemovil.network.node.NodeRetrofitClient
 import kotlinx.coroutines.launch
 
+/**
+ * Pantalla de registro de usuario.
+ * @param onRegistrationSuccess Función a llamar cuando el registro es exitoso.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
-    onLoginClick: () -> Unit
+    onRegistrationSuccess: () -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -27,9 +31,40 @@ fun RegisterScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // Asume un ID de rol por defecto para el registro, como "Consultant" o "Seller"
-    // Esto es solo un ejemplo, se debe adaptar a tu lógica de negocio
-    val defaultRoleId = "ID_DEL_ROL_POR_DEFECTO"
+    // Estado para manejar el ID del rol y el estado de carga
+    var defaultRoleId by remember { mutableStateOf<String?>(null) }
+    var rolesLoading by remember { mutableStateOf(true) }
+
+    // Usamos LaunchedEffect para cargar el ID del rol al inicio del componente
+    LaunchedEffect(Unit) {
+        try {
+            // Hacemos la llamada para obtener la lista de roles
+            val response = NodeRetrofitClient.api.getAllRoles()
+
+            if (response.isSuccessful) {
+                // Buscamos el rol "Consultant" en la lista devuelta por el servidor
+                val consultantRole = response.body()?.find { it.name == "consultant" }
+
+                // Si encontramos el rol, guardamos su ID.
+                defaultRoleId = consultantRole?._id
+
+                if (defaultRoleId == null) {
+                    Toast.makeText(context, "Error: Rol 'Consultant' no encontrado.", Toast.LENGTH_LONG).show()
+                }
+
+            } else {
+                // Manejo de errores de la API
+                val message = response.errorBody()?.string() ?: "Error al cargar los roles."
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            // Manejo de errores de red o excepciones
+            Toast.makeText(context, "Error de red: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            // La carga ha terminado
+            rolesLoading = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -44,7 +79,7 @@ fun RegisterScreen(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Nombre") },
+            label = { Text("Nombre Completo") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
@@ -66,15 +101,20 @@ fun RegisterScreen(
 
         Button(
             onClick = {
+                // Lanzamos la corutina para realizar el registro
                 coroutineScope.launch {
                     isLoading = true
                     try {
-                        val response = NodeRetrofitClient.api.registerUser(UserRegisterRequest(name, email, password, defaultRoleId))
+                        // Usamos el defaultRoleId que obtuvimos de la API.
+                        // El botón estará habilitado solo si defaultRoleId no es null.
+                        val requestBody = UserRegisterRequest(name, email, password, defaultRoleId!!)
+                        val response = NodeRetrofitClient.api.registerUser(requestBody)
+
                         if (response.isSuccessful) {
-                            Toast.makeText(context, "Registro exitoso. ¡Inicia sesión!", Toast.LENGTH_SHORT).show()
-                            onRegisterSuccess()
+                            Toast.makeText(context, "Registro exitoso!", Toast.LENGTH_SHORT).show()
+                            onRegistrationSuccess()
                         } else {
-                            val message = response.errorBody()?.string() ?: "Error de registro"
+                            val message = response.errorBody()?.string() ?: "Error en el registro"
                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
@@ -85,17 +125,15 @@ fun RegisterScreen(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            // El botón estará deshabilitado mientras se carga el ID del rol o si falta el ID
+            enabled = !isLoading && !rolesLoading && defaultRoleId != null
         ) {
-            if (isLoading) {
+            if (isLoading || rolesLoading) {
+                // Mostrar un indicador de progreso mientras se carga o se registra
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
             } else {
                 Text("Crear Cuenta")
             }
-        }
-        Spacer(Modifier.height(16.dp))
-        TextButton(onClick = onLoginClick) {
-            Text("¿Ya tienes cuenta? Iniciar Sesión")
         }
     }
 }
