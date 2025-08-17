@@ -47,19 +47,7 @@ data class SaleDetail(
     val unitPrice: Double
 )
 
-data class SaleRequest(
-    val userId: String,
-    val details: List<SaleDetail>
-)
 
-data class SaleResponse(
-    @SerializedName("_id")
-    val _id: String? = null,
-    val total: Double,
-    val date: Date? = null,
-    val userId: User? = null, // <- Aquí el userId no tiene el rol como objeto
-    val details: List<SaleDetail>
-)
 ////////////////////////
 
 // Este modelo sigue siendo útil para otras respuestas de la API de Node.js donde el rol es un objeto completo.

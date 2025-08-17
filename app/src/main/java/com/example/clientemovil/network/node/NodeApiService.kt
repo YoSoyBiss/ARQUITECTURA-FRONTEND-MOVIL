@@ -45,8 +45,8 @@ interface NodeApiService {
     @GET("api/sales/{id}")
     suspend fun getSale(@Path("id") id: String): Response<SaleResponse>
 
-    @POST("api/sales")
-    suspend fun createSale(@Body sale: SaleRequest): Response<SaleResponse>
+    @POST("api/sales") // Tu ruta para crear ventas
+    suspend fun createSale(@Body saleRequest: SaleRequest): Response<CreateSaleApiResponse>
 
     @PUT("api/sales/{id}")
     suspend fun updateSale(@Path("id") id: String, @Body sale: SaleRequest): Response<SaleResponse>
@@ -59,4 +59,10 @@ interface NodeApiService {
         @Path("id") id: String,
         @Body requestBody: Map<String, String>
     ): Response<Unit>
+
+
+    data class CreateSaleApiResponse(
+        val message: String,
+        val sale: SaleResponse
+    )
 }
