@@ -39,6 +39,11 @@ import com.example.clientemovil.ui.screens.sales.SalesFormScreen
 import com.example.clientemovil.ui.screens.sales.SalesScreen
 import com.example.clientemovil.ui.screens.user.UserFormScreen
 import com.example.clientemovil.ui.screens.user.UsersScreen
+// Importa tus colores personalizados
+import com.example.clientemovil.ui.theme.BrownBorder
+import com.example.clientemovil.ui.theme.CreamBackground
+import com.example.clientemovil.ui.theme.WhiteCard
+import com.example.clientemovil.ui.theme.BlackText // Lo necesitarás para el texto de los items no seleccionados
 import com.example.clientemovil.ui.theme.ClienteMovilTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -79,21 +84,14 @@ fun performUserLogout(
     context: Context
 ) {
     scope.launch {
-        // 1. LIMPIAR DATOS DE SESIÓN (SharedPreferences, ViewModel, token en cliente HTTP, etc.)
-        //    ADAPTA ESTO A CÓMO GUARDAS LA SESIÓN EN TU APP.
-        val sharedPreferences = context.getSharedPreferences("MyAppUserPrefs", Context.MODE_PRIVATE) // Usa el nombre correcto de tus SharedPreferences
+        val sharedPreferences = context.getSharedPreferences("MyAppUserPrefs", Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
-            remove("user_token") // La clave de tu token
-            remove("user_role")  // La clave de tu rol
-            // Cualquier otro dato de sesión que guardes
+            remove("user_token")
+            remove("user_role")
             apply()
         }
-        // Si tu cliente Retrofit (NodeRetrofitClient) guarda el token estáticamente, límpialo también:
-        // NodeRetrofitClient.clearAuthToken() // Necesitarías crear esta función en tu cliente HTTP
-
+        // NodeRetrofitClient.clearAuthToken()
         Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
-
-        // 2. NAVEGAR A LOGIN Y LIMPIAR BACKSTACK
         appNavController.navigate("login") {
             popUpTo(appNavController.graph.id) {
                 inclusive = true
@@ -109,7 +107,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ClienteMovilTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
+                // El Surface aquí puede usar CreamBackground si quieres que sea el fondo por defecto
+                // de las áreas no cubiertas por Scaffold, o mantener el del tema.
+                Surface(color = CreamBackground) { // Aplicando color de fondo base
                     AppNavigation()
                 }
             }
@@ -119,19 +119,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
-    val appNavController = rememberNavController() // NavController principal de la aplicación
+    val appNavController = rememberNavController()
 
     NavHost(
         navController = appNavController,
-        startDestination = "login" // O una función que determine si ya hay sesión activa
+        startDestination = "login"
     ) {
-        // RUTAS DE LOGIN Y REGISTRO
         composable("login") {
             LoginScreen(
                 onLoginSuccess = { role ->
-                    // IMPORTANTE: Asegúrate de que en LoginScreen, ANTES de llamar a onLoginSuccess:
-                    // 1. Guardes el token y el rol (ej. en SharedPreferences).
-                    // 2. Configures tu cliente HTTP para usar el token.
                     appNavController.navigate("main_screen/$role") {
                         popUpTo(appNavController.graph.id) { inclusive = true }
                     }
@@ -144,21 +140,15 @@ fun AppNavigation() {
                 onRegistrationSuccess = { appNavController.popBackStack() }
             )
         }
-
-        // RUTA PRINCIPAL (POST-LOGIN) QUE CONTIENE LA UI CON TOPAPPBAR Y BOTTOMNAVBAR
         composable("main_screen/{userRole}") { backStackEntry ->
             val userRole = backStackEntry.arguments?.getString("userRole")
             if (userRole != null) {
-                MainScreenWithBars( // Renombrado para mayor claridad
-                    appNavController = appNavController, // Pasa el NavController principal
+                MainScreenWithBars(
+                    appNavController = appNavController,
                     userRole = userRole
                 )
             }
-            // Podrías añadir un else aquí para manejar el caso de userRole nulo,
-            // por ejemplo, redirigiendo a login.
         }
-
-        // RUTAS DE FORMULARIO (Se accede a ellas desde las pantallas de catálogo usando appNavController)
         composable("authors_form/{authorId}") { backStackEntry ->
             val authorId = backStackEntry.arguments?.getString("authorId")?.toIntOrNull()
             AuthorsFormScreen(authorId = authorId, onBack = { appNavController.popBackStack() })
@@ -190,34 +180,28 @@ fun AppNavigation() {
     }
 }
 
-// Función para determinar la ruta de inicio de la BottomNavBar según el rol
 private fun getStartRouteForRole(role: String): String {
     return when (role.lowercase()) {
         "admin" -> "authors"
         "consultant" -> "products"
         "seller" -> "products"
-        else -> "about" // Ruta por defecto o para roles desconocidos
+        else -> "about"
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreenWithBars( // Anteriormente MainScreenWithBottomBar
-    appNavController: NavHostController, // NavController principal para navegar a Login o Formularios
+fun MainScreenWithBars(
+    appNavController: NavHostController,
     userRole: String
 ) {
-    val bottomBarNavController = rememberNavController() // NavController para las pestañas de la BottomBar
+    val bottomBarNavController = rememberNavController()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
-    // Estado para el título de la TopAppBar
     var currentScreenTitle by remember { mutableStateOf("") }
-
-    // Observar la entrada actual del backstack del NavController de la barra inferior
     val navBackStackEntry by bottomBarNavController.currentBackStackEntryAsState()
     val currentDestinationInBottomNav = navBackStackEntry?.destination
 
-    // Seleccionar los ítems de la barra inferior según el rol
     val bottomNavItems = when (userRole.lowercase()) {
         "admin" -> adminNavItems
         "consultant" -> consultantNavItems
@@ -225,7 +209,6 @@ fun MainScreenWithBars( // Anteriormente MainScreenWithBottomBar
         else -> otherNavItems
     }
 
-    // Actualizar el título de la TopAppBar cuando cambia la pantalla en la barra inferior
     LaunchedEffect(currentDestinationInBottomNav) {
         currentScreenTitle = bottomNavItems.find { it.route == currentDestinationInBottomNav?.route }?.label ?: getStartRouteForRole(userRole).replaceFirstChar { it.uppercase() }
     }
@@ -233,30 +216,53 @@ fun MainScreenWithBars( // Anteriormente MainScreenWithBottomBar
     val startDestinationForBottomNav = getStartRouteForRole(userRole)
 
     Scaffold(
+        // Aplicando color de fondo al Scaffold principal también
+        containerColor = CreamBackground,
         topBar = {
             TopAppBar(
-                title = { Text(currentScreenTitle) },
+                title = { Text(currentScreenTitle, color = WhiteCard) }, // Texto del título en blanco
                 actions = {
                     IconButton(onClick = {
-                        // Opcional: Mostrar un diálogo de confirmación antes de llamar a performUserLogout
-                        // ej. showConfirmLogoutDialog = true
                         performUserLogout(appNavController, scope, context)
                     }) {
                         Icon(
                             imageVector = Icons.Filled.Logout,
-                            contentDescription = "Cerrar Sesión"
+                            contentDescription = "Cerrar Sesión",
+                            tint = WhiteCard // Icono de logout en blanco
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = BrownBorder, // Color de fondo de la TopAppBar
+                    titleContentColor = WhiteCard, // Color del título
+                    actionIconContentColor = WhiteCard // Color de los iconos de acción
+                )
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = BrownBorder, // Color de fondo de la NavigationBar
+                contentColor = WhiteCard // Color por defecto para el contenido (útil para el indicador)
+            ) {
                 bottomNavItems.forEach { screen ->
+                    val selected = currentDestinationInBottomNav?.hierarchy?.any { it.route == screen.route } == true
                     NavigationBarItem(
-                        icon = { screen.icon?.let { icon -> Icon(icon, contentDescription = screen.label) } },
-                        label = { Text(screen.label) },
-                        selected = currentDestinationInBottomNav?.hierarchy?.any { it.route == screen.route } == true,
+                        icon = {
+                            screen.icon?.let { icon ->
+                                Icon(
+                                    icon,
+                                    contentDescription = screen.label,
+                                    // El color del icono cambiará según 'selectedColor' y 'unselectedColor' del item
+                                )
+                            }
+                        },
+                        label = {
+                            Text(
+                                screen.label,
+                                // El color del texto cambiará según 'selectedColor' y 'unselectedColor' del item
+                            )
+                        },
+                        selected = selected,
                         onClick = {
                             bottomBarNavController.navigate(screen.route) {
                                 popUpTo(bottomBarNavController.graph.findStartDestination().id) {
@@ -265,33 +271,41 @@ fun MainScreenWithBars( // Anteriormente MainScreenWithBottomBar
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = WhiteCard, // Icono seleccionado en blanco
+                            selectedTextColor = WhiteCard, // Texto seleccionado en blanco
+                            indicatorColor = WhiteCard.copy(alpha = 0.2f), // Color del indicador sutil (puedes ajustar)
+                            unselectedIconColor = WhiteCard.copy(alpha = 0.7f), // Icono no seleccionado más tenue
+                            unselectedTextColor = WhiteCard.copy(alpha = 0.7f)  // Texto no seleccionado más tenue
+                        )
                     )
                 }
             }
         }
     ) { innerPadding ->
-        // NavHost para el contenido de las pantallas de la barra inferior
         NavHost(
             navController = bottomBarNavController,
             startDestination = startDestinationForBottomNav,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier
+                .padding(innerPadding)
+            // El fondo de las pantallas internas será CreamBackground debido al Scaffold
+            // o puedes establecerlo explícitamente en cada pantalla si es necesario.
         ) {
-            // Las pantallas de catálogo reciben appNavController para navegar a los formularios
             composable("authors") { AuthorsScreen(appNavController) }
             composable("genres") { GenresScreen(appNavController) }
             composable("publishers") { PublishersScreen(appNavController) }
             composable("products") {
                 val canEdit = userRole.lowercase() == "admin" || userRole.lowercase() == "seller"
-                ProductsScreen(appNavController, canEdit) // Pasa appNavController
+                ProductsScreen(appNavController, canEdit)
             }
             composable("users") { UsersScreen(appNavController) }
             composable("roles") { RolesScreen(appNavController) }
             composable("sales") {
                 val canEdit = userRole.lowercase() == "admin" || userRole.lowercase() == "seller"
-                SalesScreen(appNavController, canEdit) // Pasa appNavController
+                SalesScreen(appNavController, canEdit)
             }
-            composable("about") { AboutScreen() } // AboutScreen usualmente no necesita NavController o usa el local
+            composable("about") { AboutScreen() }
         }
     }
 }

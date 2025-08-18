@@ -2,30 +2,39 @@ package com.example.clientemovil.ui.screens.sales
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background // Necesario para .background()
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color // Necesario para Color.Unspecified
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.clientemovil.models.CreateSaleSuccessResponse
 import com.example.clientemovil.models.Product
 import com.example.clientemovil.models.SaleDetailRequestItem
 import com.example.clientemovil.models.SaleRequest
 import com.example.clientemovil.models.UserWithRoleObject
-import com.example.clientemovil.network.node.NodeRetrofitClient
 import com.example.clientemovil.network.laravel.LaravelRetrofitClient
+import com.example.clientemovil.network.node.NodeRetrofitClient
+// Asegúrate de que esta importación sea correcta para acceder a tus colores
+import com.example.clientemovil.ui.theme.BlackText
+import com.example.clientemovil.ui.theme.BrownBorder
+import com.example.clientemovil.ui.theme.CreamBackground
+import com.example.clientemovil.ui.theme.WhiteCard
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import com.example.clientemovil.models.CreateSaleSuccessResponse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,12 +53,8 @@ fun SalesFormScreen(
     var totalSalePrice by remember { mutableStateOf(0.0) }
 
     var isLoading by remember { mutableStateOf(false) }
-
-    // Estados para el diálogo de error
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // Estados para el diálogo de cantidad
     var showQuantityDialog by remember { mutableStateOf(false) }
     var selectedProductToAdd by remember { mutableStateOf<Product?>(null) }
     var quantityInput by remember { mutableStateOf("1") }
@@ -95,21 +100,19 @@ fun SalesFormScreen(
             }
         } else {
             saleDetails = saleDetails + SaleDetailRequestItem(
-                productId = product.id!!,
+                productId = product.id!!, // Asegúrate de manejar el caso de ID nulo si es posible
                 quantity = quantity
             )
         }
-        // Recalcular el total
         totalSalePrice = saleDetails.sumOf { detail ->
             val productPrice = availableProducts.find { it.id == detail.productId }?.price ?: 0.0
             productPrice * detail.quantity
         }
     }
 
-    // Función para manejar el clic en el botón de "Añadir"
     fun onAddProductClicked(product: Product) {
         selectedProductToAdd = product
-        quantityInput = "1"
+        quantityInput = "1" // Reiniciar la cantidad
         showQuantityDialog = true
     }
 
@@ -123,6 +126,9 @@ fun SalesFormScreen(
     // Diálogo de cantidad de producto
     if (showQuantityDialog && selectedProductToAdd != null) {
         AlertDialog(
+            containerColor = WhiteCard, // Color de fondo del diálogo
+            titleContentColor = BlackText, // Color del título del diálogo
+            textContentColor = BlackText, // Color del texto del contenido
             onDismissRequest = { showQuantityDialog = false },
             title = { Text(text = "Añadir ${selectedProductToAdd!!.title}") },
             text = {
@@ -134,9 +140,19 @@ fun SalesFormScreen(
                         onValueChange = { newValue ->
                             quantityInput = newValue.filter { it.isDigit() }
                         },
-                        label = { Text("Cantidad") },
+                        label = { Text("Cantidad", color = BlackText) }, // Color de la etiqueta
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors( // Colores para OutlinedTextField
+                            focusedBorderColor = BrownBorder,
+                            unfocusedBorderColor = BrownBorder.copy(alpha = 0.7f),
+                            focusedLabelColor = BrownBorder,
+                            unfocusedLabelColor = BlackText.copy(alpha = 0.7f),
+                            cursorColor = BrownBorder,
+                            focusedTextColor = BlackText,
+                            unfocusedTextColor = BlackText,
+                            // Aquí podrías añadir containerColor si quieres cambiar el fondo del TextField
+                        )
                     )
                 }
             },
@@ -150,13 +166,17 @@ fun SalesFormScreen(
                         } else {
                             Toast.makeText(context, "La cantidad debe ser mayor que 0 y menor o igual al stock disponible.", Toast.LENGTH_SHORT).show()
                         }
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrownBorder, contentColor = WhiteCard)
                 ) {
                     Text("Añadir")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showQuantityDialog = false }) {
+                TextButton(
+                    onClick = { showQuantityDialog = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrownBorder)
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -166,11 +186,17 @@ fun SalesFormScreen(
     // Diálogo de error
     if (showErrorDialog && errorMessage != null) {
         AlertDialog(
+            containerColor = WhiteCard,
+            titleContentColor = BlackText,
+            textContentColor = BlackText,
             onDismissRequest = { showErrorDialog = false },
             title = { Text(text = "Error en la Venta") },
             text = { Text(text = errorMessage!!) },
             confirmButton = {
-                Button(onClick = { showErrorDialog = false }) {
+                Button(
+                    onClick = { showErrorDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrownBorder, contentColor = WhiteCard)
+                ) {
                     Text("Aceptar")
                 }
             }
@@ -178,14 +204,18 @@ fun SalesFormScreen(
     }
 
     Scaffold(
+        containerColor = CreamBackground, // Color de fondo principal de la pantalla
         topBar = {
             TopAppBar(
-                title = { Text(text = "Crear Venta") },
+                title = { Text(text = "Crear Venta", color = WhiteCard) }, // Color del título
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = WhiteCard) // Color del icono
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = BrownBorder // Color de fondo de la TopAppBar
+                )
             )
         }
     ) { paddingValues ->
@@ -193,10 +223,14 @@ fun SalesFormScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // .background(CreamBackground) // El Scaffold ya lo tiene, pero si no, aquí
                 .padding(16.dp)
         ) {
             if (isLoading) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = BrownBorder // Color del indicador de progreso
+                )
             } else {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -210,48 +244,88 @@ fun SalesFormScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
                             readOnly = true,
                             value = selectedUser?.name ?: "Seleccionar Cliente",
                             onValueChange = {},
-                            label = { Text("Cliente") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = userExpanded) }
+                            label = { Text("Cliente", color = BlackText) },
+                            // QUITA EL TINT DE AQUÍ SI CAUSA ERROR:
+                            // trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = userExpanded, tint = BrownBorder) },
+                            // Y CAMBIA EL TRAILING ICON ASÍ:
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = userExpanded) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = BrownBorder,
+                                unfocusedBorderColor = BrownBorder.copy(alpha = 0.7f),
+                                focusedLabelColor = BrownBorder,
+                                unfocusedLabelColor = BlackText.copy(alpha = 0.7f),
+                                cursorColor = BrownBorder,
+                                focusedTextColor = BlackText,
+                                unfocusedTextColor = BlackText,
+                                // AÑADE ESTA LÍNEA:
+                                focusedTrailingIconColor = BrownBorder,
+                                unfocusedTrailingIconColor = BrownBorder.copy(alpha = 0.7f) // O usa BlackText si prefieres
+                                // containerColor = ..., // Si también necesitas el fondo del textfield
+                            )
                         )
+
                         ExposedDropdownMenu(
                             expanded = userExpanded,
-                            onDismissRequest = { userExpanded = false }
+                            onDismissRequest = { userExpanded = false },
+                            modifier = Modifier.background(WhiteCard) // Fondo del menú desplegable
                         ) {
                             availableUsers.forEach { userOption ->
                                 DropdownMenuItem(
-                                    text = { Text(userOption.name) },
+                                    text = { Text(userOption.name, color = BlackText) },
                                     onClick = {
                                         selectedUser = userOption
                                         userExpanded = false
                                     },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = BlackText,
+                                        // Puedes añadir aquí leadingIconColor, trailingIconColor si los usas
+                                    ),
                                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                                 )
                             }
                         }
                     }
 
-                    Text("Selecciona Productos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Selecciona Productos",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = BlackText // Color del texto
+                    )
+
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(availableProducts, key = { it.id ?: it.title }) { product ->
-                            ProductItem(product) {
-                                onAddProductClicked(product)
-                            }
+                            ProductItem(product = product, onAdd = { onAddProductClicked(product) })
                         }
                     }
 
-                    Text("Productos en el carrito:", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Productos en el carrito:",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = BlackText // Color del texto
+                    )
                     saleDetails.forEach { detail ->
                         val product = availableProducts.find { it.id == detail.productId }
                         if (product != null) {
-                            Text("- ${product.title} (x${detail.quantity})", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "- ${product.title} (x${detail.quantity})",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = BlackText // Color del texto
+                            )
                         }
                     }
 
-                    Text("Total de la venta: $${String.format("%.2f", totalSalePrice)}", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Total de la venta: $${String.format("%.2f", totalSalePrice)}",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = BlackText // Color del texto
+                    )
 
                     Button(
                         onClick = {
@@ -282,17 +356,15 @@ fun SalesFormScreen(
                                                 val msg = jsonError.getString("error")
                                                 errorMessage = msg
                                                 showErrorDialog = true
-                                                Log.e("SalesFormScreen", "Error al crear venta: $msg")
                                             } catch (e: Exception) {
                                                 errorMessage = "Error al crear venta: ${response.code()}"
                                                 showErrorDialog = true
-                                                Log.e("SalesFormScreen", "Error al crear venta: ${response.code()}, Cuerpo del error: $errorBody", e)
                                             }
                                         } else {
                                             errorMessage = "Error al crear venta: ${response.code()}"
                                             showErrorDialog = true
-                                            Log.e("SalesFormScreen", "Error al crear venta: ${response.code()}")
                                         }
+                                        Log.e("SalesFormScreen", "Error al crear venta: ${response.code()}, Body: $errorBody")
                                     }
                                 } catch (e: Exception) {
                                     errorMessage = "Excepción: ${e.message}"
@@ -302,7 +374,13 @@ fun SalesFormScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = selectedUser != null && saleDetails.isNotEmpty()
+                        enabled = selectedUser != null && saleDetails.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BrownBorder, // Color de fondo del botón
+                            contentColor = WhiteCard,     // Color del texto/icono del botón
+                            disabledContainerColor = BrownBorder.copy(alpha = 0.5f), // Color cuando está deshabilitado
+                            disabledContentColor = WhiteCard.copy(alpha = 0.7f)
+                        )
                     ) {
                         Text(text = "Crear Venta")
                     }
@@ -317,7 +395,11 @@ fun ProductItem(product: Product, onAdd: () -> Unit) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = WhiteCard // Color de fondo de la tarjeta
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp) // Puedes usar ShadowColor aquí si quieres sombra
     ) {
         Row(
             modifier = Modifier
@@ -327,11 +409,14 @@ fun ProductItem(product: Product, onAdd: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(product.title, style = MaterialTheme.typography.titleMedium)
-                Text("Precio: $${String.format("%.2f", product.price)}", style = MaterialTheme.typography.bodyMedium)
-                Text("Stock: ${product.stock}", style = MaterialTheme.typography.bodySmall)
+                Text(product.title, style = MaterialTheme.typography.titleMedium, color = BlackText)
+                Text("Precio: $${String.format("%.2f", product.price)}", style = MaterialTheme.typography.bodyMedium, color = BlackText)
+                Text("Stock: ${product.stock}", style = MaterialTheme.typography.bodySmall, color = BlackText.copy(alpha = 0.7f))
             }
-            IconButton(onClick = onAdd) {
+            IconButton(
+                onClick = onAdd,
+                colors = IconButtonDefaults.iconButtonColors(contentColor = BrownBorder)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir producto")
             }
         }
