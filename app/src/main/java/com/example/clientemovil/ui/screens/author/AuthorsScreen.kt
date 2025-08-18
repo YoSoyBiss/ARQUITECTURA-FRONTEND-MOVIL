@@ -10,19 +10,37 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color // Import general de Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.clientemovil.Screen
+// Removí la importación de Screen ya que no se usa en este archivo específico.
+// import com.example.clientemovil.Screen
 import com.example.clientemovil.models.Author
 import com.example.clientemovil.network.laravel.LaravelRetrofitClient
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
+
+// Importa TUS colores específicos desde tu archivo theme
+import com.example.clientemovil.ui.theme.CreamBackground
+import com.example.clientemovil.ui.theme.BrownBorder
+import com.example.clientemovil.ui.theme.WhiteCard
+import com.example.clientemovil.ui.theme.BlackText
+import com.example.clientemovil.ui.theme.LightGrayBg
+// Necesitarás definir colores para las acciones de swipe (editar y borrar)
+// Por ejemplo, puedes añadir estos a tu Color.kt:
+// val SwipeEditBackground = Color(0xFF4CAF50) // Un verde para editar
+// val SwipeDeleteBackground = Color(0xFFF44336) // Un rojo para borrar
+// O usar los colores que prefieras. Para este ejemplo, usaré unos genéricos.
+val SwipeEditColor = Color.Blue // Puedes cambiarlo por tu color de tema
+val SwipeDeleteColor = Color.Red // Puedes cambiarlo por tu color de tema
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +81,7 @@ fun AuthorsScreen(navController: NavController) {
                 val response = LaravelRetrofitClient.api.deleteAuthor(author.id!!)
                 if (response.isSuccessful) {
                     Toast.makeText(context, "Autor eliminado", Toast.LENGTH_SHORT).show()
-                    loadAuthors()
+                    loadAuthors() // Recarga la lista
                 } else {
                     Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()
                 }
@@ -78,16 +96,24 @@ fun AuthorsScreen(navController: NavController) {
     }
 
     Scaffold(
+        containerColor = CreamBackground, // Color de fondo principal
         topBar = {
             TopAppBar(
-                title = { Text("Autores") }
+                title = { Text("Autores", color = WhiteCard) }, // Texto del título en blanco
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = BrownBorder, // Color de fondo de la TopAppBar
+                    titleContentColor = WhiteCard // Asegura que el color del título sea el deseado
+                )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                // CORRECCIÓN: Usar la ruta base y pasar el parámetro "new" directamente.
-                navController.navigate("authors_form/new")
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    navController.navigate("authors_form/new")
+                },
+                containerColor = BrownBorder, // Color de fondo del FAB
+                contentColor = WhiteCard // Color del icono dentro del FAB
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar Autor")
             }
         }
@@ -95,31 +121,30 @@ fun AuthorsScreen(navController: NavController) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues), // Aplicar padding del Scaffold
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = BrownBorder) // Color del indicador de progreso
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(16.dp), // Padding para el contenido de la lista
+                    verticalArrangement = Arrangement.spacedBy(8.dp) // Espacio entre items
                 ) {
                     items(authors, key = { it.id ?: 0 }) { author ->
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { dismissValue ->
                                 when (dismissValue) {
-                                    SwipeToDismissBoxValue.EndToStart -> {
+                                    SwipeToDismissBoxValue.EndToStart -> { // Swipe para borrar
                                         authorToDelete = author
-                                        false
+                                        false // No desaparece inmediatamente, muestra diálogo
                                     }
-                                    SwipeToDismissBoxValue.StartToEnd -> {
+                                    SwipeToDismissBoxValue.StartToEnd -> { // Swipe para editar
                                         author.id?.let {
-                                            // CORRECCIÓN: Pasar el ID como un argumento de la ruta
                                             navController.navigate("authors_form/${it}")
                                         }
-                                        false
+                                        false // No desaparece, solo navega
                                     }
                                     else -> false
                                 }
@@ -129,20 +154,21 @@ fun AuthorsScreen(navController: NavController) {
                             state = dismissState,
                             backgroundContent = {
                                 val color = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.StartToEnd -> Color.Blue
-                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
-                                    else -> Color.Transparent
+                                    SwipeToDismissBoxValue.StartToEnd -> SwipeEditColor // Color para editar
+                                    SwipeToDismissBoxValue.EndToStart -> SwipeDeleteColor // Color para borrar
+                                    else -> Color.Transparent // Fondo transparente por defecto
+                                }
+                                val alignment = when (dismissState.targetValue) {
+                                    SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                                    else -> Alignment.Center
                                 }
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .background(color)
-                                        .padding(16.dp),
-                                    contentAlignment = when (dismissState.targetValue) {
-                                        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                                        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                                        else -> Alignment.Center
-                                    }
+                                        .padding(horizontal = 20.dp), // Padding para el texto del swipe
+                                    contentAlignment = alignment
                                 ) {
                                     Text(
                                         text = when (dismissState.targetValue) {
@@ -150,24 +176,33 @@ fun AuthorsScreen(navController: NavController) {
                                             SwipeToDismissBoxValue.EndToStart -> "Borrar"
                                             else -> ""
                                         },
-                                        color = Color.White
+                                        color = WhiteCard // Texto blanco sobre el fondo de color del swipe
                                     )
                                 }
                             },
-                            content = {
+                            content = { // Contenido principal de la Card
                                 ElevatedCard(
-                                    onClick = { author.id?.let { navController.navigate("authors_form/${it}") } },
-                                    modifier = Modifier.fillMaxWidth()
+                                    onClick = {
+                                        // La navegación para editar también puede ser activada por clic
+                                        // O podrías tener una vista detallada aquí si el swipe es solo para acciones rápidas
+                                        author.id?.let { navController.navigate("authors_form/${it}") }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.elevatedCardColors(
+                                        containerColor = WhiteCard // Fondo de la card
+                                    ),
+                                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                                 ) {
-                                    Box(
+                                    Box( // Usamos Box para padding interno, puedes usar Column si necesitas más elementos
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(16.dp)
+                                            .padding(16.dp) // Padding interno de la card
                                     ) {
                                         Text(
                                             text = author.name,
                                             style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            color = BlackText // Color del texto dentro de la card
                                         )
                                     }
                                 }
@@ -181,19 +216,28 @@ fun AuthorsScreen(navController: NavController) {
 
     if (authorToDelete != null) {
         AlertDialog(
+            containerColor = CreamBackground, // Fondo del diálogo
+            titleContentColor = BlackText, // Color del título
+            textContentColor = BlackText, // Color del texto
             onDismissRequest = { authorToDelete = null },
             title = { Text("Confirmar borrado") },
             text = { Text("¿Seguro que quieres borrar a ${authorToDelete!!.name}?") },
             confirmButton = {
-                TextButton(onClick = {
-                    authorToDelete?.let { deleteAuthor(it) }
-                    authorToDelete = null
-                }) {
+                TextButton(
+                    onClick = {
+                        authorToDelete?.let { deleteAuthor(it) }
+                        authorToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrownBorder) // Color del texto del botón
+                ) {
                     Text("Sí")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { authorToDelete = null }) {
+                TextButton(
+                    onClick = { authorToDelete = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrownBorder) // Color del texto del botón
+                ) {
                     Text("No")
                 }
             }
