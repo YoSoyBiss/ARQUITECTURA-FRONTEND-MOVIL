@@ -304,9 +304,18 @@ private suspend fun createUser(user: UserWithRoleObject, context: android.conten
     }
 }
 
+// Archivo: ui/screens/user/UserFormScreen.kt
+
 private suspend fun updateUser(user: UserWithRoleObject, context: android.content.Context) {
     try {
-        val response = NodeRetrofitClient.api.updateUser(user._id!!, user)
+        // Crea un mapa con los datos que quieres enviar
+        val requestBody = mapOf(
+            "name" to user.name,
+            "email" to user.email,
+            "role" to user.role?._id.orEmpty() // Asegura que el valor sea un String
+        )
+
+        val response = NodeRetrofitClient.api.updateUser(user._id!!, requestBody)
         if (response.isSuccessful) {
             Toast.makeText(context, "Usuario actualizado con éxito", Toast.LENGTH_SHORT).show()
         } else {
@@ -314,5 +323,6 @@ private suspend fun updateUser(user: UserWithRoleObject, context: android.conten
         }
     } catch (e: Exception) {
         Toast.makeText(context, "Excepción: ${e.message}", Toast.LENGTH_SHORT).show()
+        Log.e("UserFormScreen", "Error en updateUser", e) // Agrega un log para depurar
     }
 }

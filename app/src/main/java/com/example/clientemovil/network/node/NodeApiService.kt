@@ -5,6 +5,11 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface NodeApiService {
+    // Archivo: network/node/NodeApiService.kt
+
+    // Opción 2 corregida
+    @PUT("api/users/{id}")
+    suspend fun updateUser(@Path("id") id: String, @Body requestBody: Map<String, String>): Response<UserWithRoleObject>
     @GET("api/users")
     suspend fun getAllUsers(): Response<List<UserWithRoleObject>>
 
@@ -18,8 +23,8 @@ interface NodeApiService {
     @POST("api/users")
     suspend fun createUser(@Body user: UserWithRoleObject): Response<UserWithRoleObject>
 
-    @PUT("api/users/{id}")
-    suspend fun updateUser(@Path("id") id: String, @Body user: UserWithRoleObject): Response<UserWithRoleObject>
+    //@PUT("api/users/{id}")
+    //suspend fun updateUser(@Path("id") id: String, @Body user: UserWithRoleObject): Response<UserWithRoleObject>
 
     @DELETE("api/users/{id}")
     suspend fun deleteUser(@Path("id") id: String): Response<Unit>
