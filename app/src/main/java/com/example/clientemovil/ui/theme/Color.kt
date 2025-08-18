@@ -2,10 +2,13 @@ package com.example.clientemovil.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// 🎨 Paleta basada en tu CSS
+val CreamBackground = Color(0xFFF4E3D7)   // #f4e3d7
+val BrownBorder    = Color(0xFF8D6E63)   // #8d6e63
+val WhiteCard      = Color(0xFFFFFFFF)   // #ffffff
+val BlackText      = Color(0xFF000000)   // #000000
+val LightGrayBg    = Color(0xFFF2F2F2)   // #f2f2f2
+val GrayHover      = Color(0xFFDDDDDD)   // #dddddd
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// 🔹 Para simular sombra rgba(0,0,0,0.2)
+val ShadowColor    = Color(0x33000000)   // #000000 con 20% de opacidad
